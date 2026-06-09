@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: staging
+    database: dataeng2-481419
+    schema: staging
+    tables:
+      - name: stg_flights_historical
+        description: "Cleaned historical flight delay data"
+      - name: stg_flights_live
+        description: "Cleaned live flight data from OpenSky"
