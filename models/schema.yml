@@ -1,0 +1,145 @@
+version: 2
+
+models:
+  - name: stg_flights_historical
+    description: "Cleaned and standardized historical flight delay data from Kaggle 2019-2023 dataset"
+    columns:
+      - name: flight_date
+        description: "Date of the flight"
+        tests:
+          - not_null
+      - name: carrier_code
+        description: "IATA airline carrier code (e.g. AA, DL, UA)"
+        tests:
+          - not_null
+      - name: origin_airport
+        description: "IATA code of the departure airport"
+        tests:
+          - not_null
+      - name: dest_airport
+        description: "IATA code of the arrival airport"
+        tests:
+          - not_null
+      - name: delay_category
+        description: "Categorized delay: ON_TIME, MINOR_DELAY, MAJOR_DELAY, SEVERE_DELAY, CANCELLED"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['ON_TIME', 'MINOR_DELAY', 'MAJOR_DELAY', 'SEVERE_DELAY', 'CANCELLED']
+
+  - name: stg_flights_live
+    description: "Cleaned live flight data from OpenSky Network API with enriched columns"
+    columns:
+      - name: callsign
+        description: "Flight callsign from live ADS-B feed"
+        tests:
+          - not_null
+      - name: carrier_code
+        description: "Extracted 2-3 letter carrier code from callsign — JOIN KEY with historical data"
+        tests:
+          - not_null
+      - name: flight_phase
+        description: "Derived flight phase: TAKEOFF_LANDING, CLIMBING_DESCENDING, CRUISING"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['TAKEOFF_LANDING', 'CLIMBING_DESCENDING', 'CRUISING']
+
+  - name: dim_carriers
+    description: "Dimension table with historical performance metrics per airline carrier"
+    columns:
+      - name: carrier_code
+        description: "Primary key — unique airline carrier code"
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_airports
+    description: "Dimension table with departure performance metrics per airport"
+    columns:
+      - name: airport_code
+        description: "Primary key — IATA airport code"
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_date
+    description: "Date dimension with calendar attributes for time-based analysis"
+    columns:
+      - name: date_day
+        description: "Primary key — calendar date"
+        tests:
+          - not_null
+          - unique
+
+  - name: fct_flight_delays
+    description: "Core fact table with flight-level delay details, partitioned by flight_date"
+    columns:
+      - name: flight_date
+        description: "Partition key — date of the flight"
+        tests:
+          - not_null
+      - name: carrier_code
+        description: "Foreign key to dim_carriers"
+        tests:
+          - not_null
+      - name: origin_airport
+        description: "Foreign key to dim_airports"
+        tests:
+          - not_null
+
+  - name: fct_live_flights
+    description: "Fact table of live in-air flights from OpenSky Network"
+    columns:
+      - name: carrier_code
+        description: "JOIN KEY — links to historical data via dim_carriers"
+        tests:
+          - not_null
+      - name: ingested_date
+        description: "Date when live data was ingested"
+        tests:
+          - not_null
+
+  - name: fct_delay_by_route
+    description: "Aggregated delay metrics per origin-destination-carrier route"
+    columns:
+      - name: origin_airport
+        description: "Departure airport IATA code"
+        tests:
+          - not_null
+      - name: dest_airport
+        description: "Arrival airport IATA code"
+        tests:
+          - not_null
+
+  - name: mart_delay_comparison
+    description: "Final mart joining historical delay performance with live carrier activity — main analytics table"
+    columns:
+      - name: carrier_code
+        description: "Primary key — airline carrier"
+        tests:
+          - not_null
+          - unique
+      - name: carrier_reliability
+        description: "Derived reliability score: RELIABLE, AVERAGE, UNRELIABLE"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['RELIABLE', 'AVERAGE', 'UNRELIABLE']
+
+  - name: mart_weather_impact
+    description: "Monthly analysis of delay causes — weather vs carrier vs NAS"
+    columns:
+      - name: flight_month
+        description: "Month of the analysis"
+        tests:
+          - not_null
+
+  - name: mart_live_country_activity
+    description: "Live flight activity aggregated by country of origin"
+    columns:
+      - name: origin_country
+        description: "Primary key — country of aircraft origin"
+        tests:
+          - not_null
+          - unique
