@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: staging
+    database: dataeng2-481419
+    schema: staging
+    tables:
+      - name: stg_flights_historical
+        description: "Silver layer - cleaned historical flight data via PySpark"
+      - name: stg_flights_live
+        description: "Silver layer - cleaned live flight data via PySpark"
